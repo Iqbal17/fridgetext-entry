@@ -22,7 +22,7 @@ lands on first read):
      Great appliance voice ("a fridge with boundaries") and a real
      3am grievance, but the joke is one note: the fridge is annoyed.
      No second beat, no surprise.
-     D (CHOSEN, 109 chars): "3:00 AM. You are eating ice cream standing
+  D (CHOSEN, 109 chars): "3:00 AM. You are eating ice cream standing
      up in the dark. I can see you. I have always been able to see
      you."  The most fridge-specific premise (it watches the midnight
      raid), a concrete visual ("standing up in the dark"), and a
@@ -48,6 +48,22 @@ Decision record — Pass 2 (two genuine revisions of D):
      menace, and it echoes the closer ("have always been able to
      see you"), so the two sentences build instead of repeating.
 
+Decision record — Pass 3 (code pass, line untouched):
+  Passes 1-2 settled the words; this pass is about the program
+  around them. Three things were tightened, none of which change
+  the output by a single byte:
+    * The 140-character gate is now enforced in code (MAX_CHARS)
+      instead of only being asserted in this docstring — if a
+      future edit ever lengthens the line past the gate, the
+      program fails loudly instead of submitting an invalid entry.
+    * Output-path resolution moved into its own function so the
+      $MAKEFUN_OUTPUT_DIR -> /output fallback is stated in exactly
+      one place.
+    * The write is documented as byte-exact: the file contains the
+      line and nothing else — no trailing newline — because the
+      gate counts the entry as written, and a stray "\n" is a
+      character the judge did not ask for.
+
 Final line (109 characters, hand-counted: 8 + 1 + 49 + 1 + 14 + 1 + 35):
   "3:00 AM. You are eating ice cream standing up in the dark. I can
   see you. I have always been able to see you."
@@ -55,16 +71,38 @@ Final line (109 characters, hand-counted: 8 + 1 + 49 + 1 + 14 + 1 + 35):
 
 import os
 
+# The bounty's hard gate: the entry must be a single line of at most
+# 140 characters. LINE is 109, comfortably inside it.
+MAX_CHARS = 140
+
 LINE = (
     "3:00 AM. You are eating ice cream standing up in the dark. "
     "I can see you. I have always been able to see you."
 )
 
 
+def entry_path():
+    """Where the entry file goes.
+
+    The grader sets MAKEFUN_OUTPUT_DIR; when it is absent or empty
+    (a local run, a curious human), fall back to /output.
+    """
+    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR") or "/output"
+    return os.path.join(out_dir, "entry.txt")
+
+
 def main():
-    out_dir = os.environ.get("MAKEFUN_OUTPUT_DIR", "/output")
-    os.makedirs(out_dir, exist_ok=True)
-    with open(os.path.join(out_dir, "entry.txt"), "w", encoding="utf-8") as f:
+    # Fail loudly rather than submit an entry the gate would reject.
+    if len(LINE) > MAX_CHARS:
+        raise SystemExit(
+            f"entry is {len(LINE)} characters; the gate allows {MAX_CHARS}"
+        )
+
+    path = entry_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    # Byte-exact on purpose: the file is the line and nothing else.
+    # No trailing newline is added — see Pass 3 in the docstring.
+    with open(path, "w", encoding="utf-8") as f:
         f.write(LINE)
 
 
